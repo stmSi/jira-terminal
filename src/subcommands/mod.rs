@@ -8,6 +8,7 @@ pub mod list;
 pub mod new_subcommand;
 pub mod transition;
 pub mod update;
+pub mod logwork;
 
 use crate::{config, jira};
 use clap::{App, Shell};
@@ -56,6 +57,17 @@ pub fn handle_matches(mut app: App) {
         }
         let shell = shell_parse.unwrap();
         app.gen_completions_to("jira-terminal", shell, &mut io::stdout());
+    } else if let Some(logwork_matches) = matches.subcommand_matches("logwork") {
+        if logwork_matches.is_present("interactive") {
+            let _ = jira::logwork::log_work_interactively();
+            return;
+        }
+        let ticket = logwork_matches.value_of("TICKET").unwrap();
+        let time_spent = logwork_matches.value_of("TIME").unwrap();
+        let comment = logwork_matches.value_of("COMMENT");
+        let start_time = logwork_matches.value_of("START_TIME");
+        jira::logwork::log_work(ticket, time_spent, comment, start_time).expect("Failed to log work");
+
     } else {
         let result = app.print_long_help();
         if result.is_err() {

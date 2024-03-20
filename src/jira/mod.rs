@@ -8,6 +8,7 @@ mod new_issue;
 pub mod transitions;
 mod update;
 pub mod utils;
+pub mod logwork;
 
 extern crate clap;
 use clap::ArgMatches;
