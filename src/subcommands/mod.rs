@@ -46,6 +46,8 @@ pub fn handle_matches(mut app: App) {
         jira::handle_assign_matches(assign);
     } else if let Some(comments) = matches.subcommand_matches("comment") {
         jira::handle_comments_matches(comments);
+    } else if let Some(logwork_matches) = matches.subcommand_matches("logwork") {
+        jira::handle_logwork_matches(logwork_matches);
     } else if let Some(autocompletion) = matches.subcommand_matches("autocompletion") {
         let shell_name = autocompletion.value_of("shell").unwrap();
         let shell_parse = Shell::from_str(shell_name);
@@ -57,17 +59,6 @@ pub fn handle_matches(mut app: App) {
         }
         let shell = shell_parse.unwrap();
         app.gen_completions_to("jira-terminal", shell, &mut io::stdout());
-    } else if let Some(logwork_matches) = matches.subcommand_matches("logwork") {
-        if logwork_matches.is_present("interactive") {
-            let _ = jira::logwork::log_work_interactively();
-            return;
-        }
-        let ticket = logwork_matches.value_of("TICKET").unwrap();
-        let time_spent = logwork_matches.value_of("TIME").unwrap();
-        let comment = logwork_matches.value_of("COMMENT");
-        let start_time = logwork_matches.value_of("START_TIME");
-        jira::logwork::log_work(ticket, time_spent, comment, start_time).expect("Failed to log work");
-
     } else {
         let result = app.print_long_help();
         if result.is_err() {
