@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::Read;
@@ -66,7 +67,8 @@ fn create_config() {
         token: b64,
         account_id: "",
         alias: {},
-        transitions: {}
+        transitions: {},
+        cached_tickets: []
     };
     let account_id = cache::get_username(&configuration);
     configuration["account_id"] = account_id.into();
@@ -300,3 +302,45 @@ pub fn list_all_alias() {
         println!("* {:20} => {:?}", alias, value.as_str().unwrap_or(""));
     }
 }
+
+pub fn get_cached_tickets() -> HashMap<String, String> {
+    let config_value = parse_config();
+    let mut cached_tickets = HashMap::new();
+    for cached_ticket in config_value["cached_tickets"].members() {
+        let ticket_id = cached_ticket["ticket"].as_str().unwrap().to_string();
+        let title = cached_ticket["title"].as_str().unwrap().to_string();
+        cached_tickets.insert(ticket_id, title);
+    }
+    cached_tickets
+}
+
+
+pub fn add_cached_ticket(ticket: String, title: String) {
+    let mut config_value = parse_config();
+
+    if !config_value["cached_tickets"].is_array() {
+        config_value["cached_tickets"] = json::array![];
+    }
+
+    let exists = config_value["cached_tickets"]
+        .members()
+        .any(|cached_ticket| cached_ticket["ticket"] == ticket && cached_ticket["title"] == title);
+
+
+    if !exists {
+        config_value["cached_tickets"].push(json::object! {
+            "ticket" => ticket,
+            "title" => title
+        }).expect("Failed to add ticket to cache.");
+    }
+
+
+    write_config(config_value);
+}
+
+pub fn add_cached_tickets(tickets: HashMap<String, String>) {
+    for (ticket, title) in tickets {
+        add_cached_ticket(ticket, title);
+    }
+}
+

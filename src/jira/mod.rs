@@ -8,6 +8,7 @@ mod new_issue;
 pub mod transitions;
 mod update;
 pub mod utils;
+pub mod logwork;
 
 extern crate clap;
 use clap::ArgMatches;
@@ -65,4 +66,16 @@ pub fn handle_comments_matches(matches: &ArgMatches) {
         return;
     }
     comments::add_new_comment(ticket, matches);
+}
+
+pub fn handle_logwork_matches(matches: &ArgMatches) {
+    if matches.is_present("interactive") {
+        let _ = logwork::log_work_interactively();
+        return;
+    }
+    let ticket = matches.value_of("TICKET").unwrap();
+    let time_spent = matches.value_of("TIME").unwrap();
+    let comment = matches.value_of("COMMENT");
+    let start_time = matches.value_of("START_TIME");
+    logwork::log_work(ticket, time_spent, comment, start_time).expect("Failed to log work");
 }

@@ -8,6 +8,7 @@ pub mod list;
 pub mod new_subcommand;
 pub mod transition;
 pub mod update;
+pub mod logwork;
 
 use crate::{config, jira};
 use clap::{App, Shell};
@@ -45,6 +46,8 @@ pub fn handle_matches(mut app: App) {
         jira::handle_assign_matches(assign);
     } else if let Some(comments) = matches.subcommand_matches("comment") {
         jira::handle_comments_matches(comments);
+    } else if let Some(logwork_matches) = matches.subcommand_matches("logwork") {
+        jira::handle_logwork_matches(logwork_matches);
     } else if let Some(autocompletion) = matches.subcommand_matches("autocompletion") {
         let shell_name = autocompletion.value_of("shell").unwrap();
         let shell_parse = Shell::from_str(shell_name);
