@@ -96,11 +96,11 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
                     Weekday::Sat | Weekday::Sun => {
                         let confirmation: String = Input::new()
                             .with_prompt(
-                                format!("This is Weekend {}... continue? (y/n):", weekday).as_str(),
+                                format!("This is Weekend {}... continue? (y/n)", weekday).as_str(),
                             )
                             .interact_text()?;
 
-                        if confirmation.to_lowercase().eq("y") {
+                        if confirmation.to_lowercase().starts_with("y") {
                             break;
                         }
                     }
@@ -110,6 +110,11 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
                 eprintln!("Error occurred when converting to Date. ");
             }
         }
+        println!(
+            "Date: {} {} ",
+            start_date.to_string().bold().yellow(),
+            start_date.weekday().to_string().bold().yellow(),
+        );
 
         // Determine next day
         let mut next_day = start_date.clone();
@@ -221,8 +226,6 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
     // Ok(())
 }
 
-/// Mock function to represent fetching tickets
-/// Implement according to your application's logic
 pub fn get_own_tickets() -> HashMap<String, String> {
     println!("Fetching assigned tickets...");
     let json_result = api::get_call_v3("search?jql=assignee=currentUser()".to_string()).unwrap();
