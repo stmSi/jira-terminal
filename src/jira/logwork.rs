@@ -1,6 +1,6 @@
 use crate::config;
 use crate::jira::api;
-use chrono::DateTime;
+use chrono::{DateTime, Datelike, Days, NaiveDate, Weekday};
 use colored::*;
 use dialoguer::Input;
 use std::collections::HashMap;
@@ -64,22 +64,73 @@ pub fn log_work(
 /// Function to interactively log work with enhanced features
 pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
     let mut tickets = get_own_tickets();
+    let mut next_date_str: String = String::new();
     loop {
-        let start_date: String = Input::new()
-            .with_prompt("Start date (YYYY-MM-DD)")
-            .interact_text()?;
+        let mut start_date_str: String;
+        let mut start_date: NaiveDate;
+        loop {
+            if next_date_str.is_empty() {
+                start_date_str = Input::new()
+                    .with_prompt("Start date (YYYY-MM-DD)")
+                    .interact_text()?;
+            } else {
+                let next_date = chrono::NaiveDate::parse_from_str(&next_date_str, "%Y-%m-%d")?;
+                let next_date_weekday = next_date.weekday();
 
-        let mut start_time: String = Input::new()
-            .with_prompt("Start time for work log (HH:MM) in New York Eastern timezone")
-            .interact_text()?;
+                start_date_str = Input::new()
+                    .with_prompt("Start date (YYYY-MM-DD)")
+                    .default(format!(
+                        "{}:{}",
+                        next_date_weekday.to_string(),
+                        next_date_str
+                    ))
+                    .with_initial_text(next_date_str.clone())
+                    .interact_text()?;
+            }
 
-        if start_time.is_empty() {
-            start_time = "09:00".to_string();
+            let start_date_result = chrono::NaiveDate::parse_from_str(&start_date_str, "%Y-%m-%d");
+            if start_date_result.is_ok() {
+                start_date = start_date_result.unwrap();
+                let weekday = start_date.weekday();
+                match weekday {
+                    Weekday::Sat | Weekday::Sun => {
+                        let confirmation: String = Input::new()
+                            .with_prompt(
+                                format!("This is Weekend {}... continue? (y/n):", weekday).as_str(),
+                            )
+                            .interact_text()?;
+
+                        if confirmation.to_lowercase().eq("y") {
+                            break;
+                        }
+                    }
+                    _ => break,
+                }
+            } else {
+                eprintln!("Error occurred when converting to Date. ");
+            }
         }
+
+        // Determine next day
+        let mut next_day = start_date.clone();
+        loop {
+            next_day = next_day.checked_add_days(Days::new(1)).unwrap();
+            let weekday = next_day.weekday();
+            if weekday != Weekday::Sat && weekday != Weekday::Sun {
+                break;
+            }
+        }
+        next_date_str = next_day.format("%Y-%m-%d").to_string();
+
+        let start_time: String = Input::new()
+            .with_prompt("Start time for work log (HH:MM) in New York Eastern timezone")
+            .default("09:00".into())
+            .with_initial_text("09:00")
+            .interact_text()?;
 
         // format is this 2024-02-01T16:00:21.000-0500
         // Format the input date and time, appending the "-0500" (Eastern timezone)
-        let datetime_with_timezone = format!("{}T{}:00.000-0500", start_date, start_time);
+        let datetime_with_timezone = format!("{}T{}:00.000-0500", start_date_str, start_time);
 
         // Use `fzf` to select a ticket, assuming a get_tickets function that returns a Vec<String> of ticket options
         let ticket_selection = Command::new("fzf")
