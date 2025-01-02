@@ -65,6 +65,8 @@ pub fn log_work(
 pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
     let mut tickets = get_own_tickets();
     let mut next_date_str: String = String::new();
+    let mut last_selected_ticket_id = String::new();
+
     loop {
         let mut start_date_str: String;
         let mut start_date: NaiveDate;
@@ -138,11 +140,19 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
         let datetime_with_timezone = format!("{}T{}:00.000-0500", start_date_str, start_time);
 
         // Use `fzf` to select a ticket, assuming a get_tickets function that returns a Vec<String> of ticket options
-        let ticket_selection = Command::new("fzf")
+        let mut ticket_selection_command = Command::new("fzf");
+        ticket_selection_command
             .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()?;
+            .stdout(Stdio::piped());
 
+        // Pass last selected ticket to fzf as initial query if available.
+        if !last_selected_ticket_id.is_empty() {
+            ticket_selection_command
+                .arg("--query")
+                .arg(&last_selected_ticket_id);
+        }
+
+        let ticket_selection = ticket_selection_command.spawn()?;
         {
             let mut stdin = ticket_selection.stdin.as_ref().unwrap();
             for ticket in tickets.clone().into_iter() {
@@ -171,6 +181,20 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
                         selected_ticket_id.clone(),
                         selected_ticket_title.clone(),
                     );
+                    println!();
+                    println!(
+                        "{}",
+                        "Found New Ticket, Saved for future completion"
+                            .bold()
+                            .blue()
+                    );
+                    println!(
+                        "{} {}",
+                        "Selected ticket:".bold().blue(),
+                        format!("{} - {}", selected_ticket_id, selected_ticket_title)
+                            .bold()
+                            .green()
+                    );
                     break;
                 }
             }
@@ -182,6 +206,7 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
                 .as_str()
                 .to_string();
         }
+        last_selected_ticket_id = selected_ticket_id.clone();
 
         println!(
             "Selected ticket: {} - {}",
@@ -189,12 +214,21 @@ pub fn log_work_interactively() -> Result<(), Box<dyn Error>> {
         );
 
         // ask for timespent
+        let mut default_work_hr = "8h";
+        if start_date.weekday().to_string().eq("Fri") {
+            default_work_hr = "7h";
+        }
+
         let timespent: String = Input::new()
             .with_prompt("Time spent (e.g. 1h 30m)")
+            .with_initial_text(default_work_hr)
             .interact_text()?;
 
         // ask for comment
-        let comment: String = Input::new().with_prompt("Comment").interact_text()?;
+        let comment: String = Input::new()
+            .with_prompt("Comment")
+            .with_initial_text(&selected_ticket_title)
+            .interact_text()?;
 
         println!();
         println!("{}", "-------------------".bold().blue());
